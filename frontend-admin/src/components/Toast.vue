@@ -41,7 +41,8 @@ const icons = { success: '✓', error: '✗', warning: '⚠', info: 'ℹ' }
 .toast.error { background: #fef2f2; color: #dc2626; border-left: 4px solid #ef4444; }
 .toast.warning { background: #fffbeb; color: #d97706; border-left: 4px solid #f59e0b; }
 .toast.info { background: #eff6ff; color: #2563eb; border-left: 4px solid #3b82f6; }
-.toast-icon { font-size: 16px; font-weight: 700; }
+.toast-icon { font-size: 16px; font-weight: 700; min-width: 20px; text-align: center; }
+.toast.warning .toast-icon { margin-right: 4px; }
 .toast-msg { flex: 1; }
 .toast-enter-active { transition: all 0.3s ease; }
 .toast-leave-active { transition: all 0.3s ease; }
