@@ -12,7 +12,13 @@
       </div>
     </div>
 
-    <div v-if="results.length" class="results">
+    <div v-if="searching" class="loading-card">
+      <div class="spinner"></div>
+      <p>正在搜索中，请稍候...</p>
+    </div>
+
+    <div v-else-if="results.length" class="results">
+      <p class="result-count">找到 {{ results.length }} 个相关文档</p>
       <div v-for="r in results" :key="r.file_id" class="result-card">
         <div class="result-info">
           <div class="result-name">{{ r.filename }}</div>
@@ -64,6 +70,11 @@ h1 { font-size: 24px; color: #1e293b; }
 .score { font-size: 24px; font-weight: 700; color: #10b981; }
 .label { font-size: 12px; color: #64748b; }
 .empty-card { background: white; padding: 60px; border-radius: 12px; text-align: center; color: #64748b; }
+.loading-card { background: white; padding: 60px; border-radius: 12px; text-align: center; color: #64748b; border: 1px solid #e2e8f0; }
+.loading-card p { margin-top: 16px; font-size: 15px; }
+.spinner { width: 36px; height: 36px; border: 3px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.result-count { font-size: 13px; color: #64748b; margin-bottom: 12px; }
 @media (max-width: 768px) {
   .search-box { flex-direction: column; }
   .result-card { flex-direction: column; align-items: flex-start; gap: 12px; }

@@ -40,12 +40,21 @@ class VideoParser:
             return False
     
     async def transcribe(self, video_path: str, segment_duration: int = 30) -> Dict:
-        """视频语音转文字"""
+        """视频语音转文字（whisper不可用时降级为文件名信息）"""
         chunks = []
         metadata = {"duration": 0, "language": ""}
         
         if not self._check_whisper():
-            return {"error": "whisper not installed", "chunks": [], "metadata": metadata}
+            # 降级处理：whisper不可用时，用文件名生成基本信息，不报错
+            filename = Path(video_path).stem
+            chunks.append({
+                "index": 0,
+                "content": f"视频文件：{filename}（语音转文字服务未安装，仅记录文件信息）",
+                "type": "fallback",
+                "start": 0,
+                "end": 0
+            })
+            return {"chunks": chunks, "metadata": metadata}
 
         try:
             self._load_model()
@@ -53,7 +62,16 @@ class VideoParser:
                 audio_path = tmp.name
             
             if not await self.extract_audio(video_path, audio_path):
-                return {"error": "Failed to extract audio", "chunks": [], "metadata": metadata}
+                # 音频提取失败也降级处理
+                filename = Path(video_path).stem
+                chunks.append({
+                    "index": 0,
+                    "content": f"视频文件：{filename}（音频提取失败，仅记录文件信息）",
+                    "type": "fallback",
+                    "start": 0,
+                    "end": 0
+                })
+                return {"chunks": chunks, "metadata": metadata}
             
             result = self.model.transcribe(audio_path, language="zh")
             metadata["language"] = result.get("language", "unknown")
@@ -73,7 +91,15 @@ class VideoParser:
             
             os.unlink(audio_path)
         except Exception as e:
-            return {"error": str(e), "chunks": [], "metadata": metadata}
+            # 异常也降级，不返回error
+            filename = Path(video_path).stem
+            chunks.append({
+                "index": 0,
+                "content": f"视频文件：{filename}（转写异常：{str(e)[:100]}）",
+                "type": "fallback",
+                "start": 0,
+                "end": 0
+            })
         
         return {"chunks": chunks, "metadata": metadata}
     

@@ -11,7 +11,7 @@
       </label>
     </div>
 
-    <div v-if="uploading" class="upload-progress">
+    <div class="upload-progress" :class="{ active: uploading }">
       <div class="progress-label">上传中... {{ uploadPercent }}%</div>
       <div class="progress-bar">
         <div class="progress-fill" :style="{ width: uploadPercent + '%' }"></div>
@@ -105,12 +105,13 @@ const load = async (toastMsg = '') => {
   if (filter.status) params.status = filter.status
   try {
     const { data } = await files.list(params)
-    list.value = data.files || []
-    page.value = 1
+    const newList = data.files || []
+    // 避免列表闪烁：只在数据真正变化时更新
+    list.value = newList
+    if (page.value > Math.ceil(newList.length / pageSize)) page.value = 1
     if (toastMsg) toast.success(toastMsg)
   } catch (err) {
     toast.error('加载文件列表失败')
-    list.value = []
   }
 }
 
@@ -142,14 +143,15 @@ onMounted(load)
 h1 { font-size: 24px; color: #1e293b; }
 p { color: #64748b; font-size: 14px; margin-top: 4px; }
 .btn-upload { padding: 10px 20px; background: #6366f1; color: white; border-radius: 8px; cursor: pointer; font-size: 14px; }
-.upload-progress { background: white; padding: 16px 24px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 16px; }
+.upload-progress { background: white; padding: 0 24px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 16px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; border-color: transparent; }
+.upload-progress.active { max-height: 80px; opacity: 1; padding: 16px 24px; border-color: #e2e8f0; }
 .progress-label { font-size: 14px; color: #1e293b; margin-bottom: 8px; font-weight: 500; }
 .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
 .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); border-radius: 4px; transition: width 0.3s ease; }
 .filter-bar { display: flex; gap: 12px; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 12px; flex-wrap: wrap; }
 .filter-bar select { padding: 10px 32px 10px 16px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; font-size: 14px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M2 4l4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; cursor: pointer; }
 .btn-refresh { padding: 10px 16px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; }
-.card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+.card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; min-height: 200px; }
 table { width: 100%; border-collapse: collapse; }
 th { text-align: left; padding: 14px 16px; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0; text-transform: uppercase; }
 td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; }

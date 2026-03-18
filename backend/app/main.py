@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from contextlib import asynccontextmanager
 import logging
 import json
@@ -51,7 +51,8 @@ app = FastAPI(
     title="AI知识库管理系统",
     description="AI驱动的文档解析、自动分类与语义检索API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redoc_url=None  # 禁用默认 ReDoc，使用自定义版本
 )
 
 # 全局异常处理器
@@ -86,3 +87,30 @@ app.include_router(stats_router)
 @app.get("/health", summary="健康检查", description="检查服务是否正常运行")
 async def health():
     return {"status": "ok"}
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """根路径重定向到 API 文档"""
+    return RedirectResponse(url="/docs")
+
+from fastapi.responses import HTMLResponse
+
+@app.get("/redoc", include_in_schema=False)
+async def custom_redoc():
+    """自定义 ReDoc 页面，使用稳定版本"""
+    return HTMLResponse("""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI知识库管理系统 - ReDoc</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+    <style>body { margin: 0; padding: 0; }</style>
+</head>
+<body>
+    <redoc spec-url="/openapi.json"></redoc>
+    <script src="https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js"></script>
+</body>
+</html>
+""")

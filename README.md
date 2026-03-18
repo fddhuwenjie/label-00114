@@ -22,7 +22,6 @@ docker-compose down
 | 服务 | 端口 | 访问地址 | 说明 |
 |------|------|----------|------|
 | frontend-admin | 8181 | http://localhost:8181 | 管理后台 |
-| backend | ${BACKEND_PORT:-8000} | http://localhost:8000 | API服务（可外部访问） |
 | API文档 | - | http://localhost:8181/api/docs | Swagger交互式文档 |
 | API文档 | - | http://localhost:8181/api/redoc | ReDoc文档 |
 
