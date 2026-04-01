@@ -72,3 +72,9 @@ class ProcessPendingResponse(BaseModel):
     success: bool
     processed: int
     errors: List[Dict[str, Any]]
+
+class SummaryResponse(BaseModel):
+    success: bool
+    summary: Optional[str] = None
+    generation_time_ms: int
+    from_cache: bool = False

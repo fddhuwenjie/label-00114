@@ -37,7 +37,8 @@ export const files = {
   }),
   review: (id, action) => api.post(`/files/${id}/review`, null, { params: { action } }),
   reindex: () => api.post('/files/reindex'),
-  processPending: () => api.post('/files/process-pending')
+  processPending: () => api.post('/files/process-pending'),
+  generateSummary: (id, regenerate = false) => api.post(`/documents/${id}/summary`, null, { params: { regenerate: regenerate } })
 }
 
 export const search = {
