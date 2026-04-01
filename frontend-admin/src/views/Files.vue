@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1>文件管理</h1>
-        <p>上传和管理知识库文件</p>
+        <p>上传和管理知识库文件，点击文件行查看详情</p>
       </div>
       <label class="btn-upload">
         📤 上传文件
@@ -40,7 +40,7 @@
       <table v-if="pagedList.length" class="desktop-table">
         <thead><tr><th>文件名</th><th>标准名</th><th>分类</th><th>状态</th><th>审核</th></tr></thead>
         <tbody>
-          <tr v-for="f in pagedList" :key="f.id">
+          <tr v-for="f in pagedList" :key="f.id" class="clickable-row" @click="openDetail(f)">
             <td>{{ f.name }}</td><td>{{ f.standard_name || '-' }}</td>
             <td><span class="tag">{{ f.bucket }}</span></td>
             <td><span :class="['status', f.status]">{{ statusMap[f.status] }}</span></td>
@@ -49,7 +49,7 @@
         </tbody>
       </table>
       <div v-if="pagedList.length" class="mobile-cards">
-        <div v-for="f in pagedList" :key="'m'+f.id" class="file-card">
+        <div v-for="f in pagedList" :key="'m'+f.id" class="file-card clickable-row" @click="openDetail(f)">
           <div class="file-card-name">{{ f.name }}</div>
           <div class="file-card-std">{{ f.standard_name || '-' }}</div>
           <div class="file-card-meta">
@@ -75,9 +75,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { files } from '../api'
 import { useToast } from '../composables/useToast'
 
+const router = useRouter()
 const toast = useToast()
 const list = ref([])
 const filter = reactive({ bucket: '', status: '' })
@@ -106,7 +108,6 @@ const load = async (toastMsg = '') => {
   try {
     const { data } = await files.list(params)
     const newList = data.files || []
-    // 避免列表闪烁：只在数据真正变化时更新
     list.value = newList
     if (page.value > Math.ceil(newList.length / pageSize)) page.value = 1
     if (toastMsg) toast.success(toastMsg)
@@ -135,6 +136,10 @@ const upload = async (e) => {
   }
 }
 
+const openDetail = (file) => {
+  router.push(`/documents/${file.id}`)
+}
+
 onMounted(load)
 </script>
 
@@ -142,6 +147,9 @@ onMounted(load)
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; background: white; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0; }
 h1 { font-size: 24px; color: #1e293b; }
 p { color: #64748b; font-size: 14px; margin-top: 4px; }
+
+.clickable-row { cursor: pointer; transition: background 0.2s; }
+.clickable-row:hover { background: #f8fafc; }
 .btn-upload { padding: 10px 20px; background: #6366f1; color: white; border-radius: 8px; cursor: pointer; font-size: 14px; }
 .upload-progress { background: white; padding: 0 24px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 16px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; border-color: transparent; }
 .upload-progress.active { max-height: 80px; opacity: 1; padding: 16px 24px; border-color: #e2e8f0; }

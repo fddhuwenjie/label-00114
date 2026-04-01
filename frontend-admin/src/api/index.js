@@ -40,6 +40,11 @@ export const files = {
   processPending: () => api.post('/files/process-pending')
 }
 
+export const documents = {
+  get: (id) => api.get(`/documents/${id}`),
+  generateSummary: (id, regenerate = false) => api.post(`/documents/${id}/summary`, null, { params: { regenerate } })
+}
+
 export const search = {
   query: (q, topK = 10) => api.get('/search', { params: { q, top_k: topK } })
 }
