@@ -41,7 +41,7 @@
         <thead><tr><th>文件名</th><th>标准名</th><th>分类</th><th>状态</th><th>审核</th></tr></thead>
         <tbody>
           <tr v-for="f in pagedList" :key="f.id">
-            <td>{{ f.name }}</td><td>{{ f.standard_name || '-' }}</td>
+            <td><a @click="goToDetail(f.id)" class="file-link">{{ f.name }}</a></td><td>{{ f.standard_name || '-' }}</td>
             <td><span class="tag">{{ f.bucket }}</span></td>
             <td><span :class="['status', f.status]">{{ statusMap[f.status] }}</span></td>
             <td><span :class="['status', f.review_status]">{{ reviewMap[f.review_status] }}</span></td>
@@ -49,7 +49,7 @@
         </tbody>
       </table>
       <div v-if="pagedList.length" class="mobile-cards">
-        <div v-for="f in pagedList" :key="'m'+f.id" class="file-card">
+        <div v-for="f in pagedList" :key="'m'+f.id" class="file-card" @click="goToDetail(f.id)">
           <div class="file-card-name">{{ f.name }}</div>
           <div class="file-card-std">{{ f.standard_name || '-' }}</div>
           <div class="file-card-meta">
@@ -75,8 +75,11 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { files } from '../api'
 import { useToast } from '../composables/useToast'
+
+const router = useRouter()
 
 const toast = useToast()
 const list = ref([])
@@ -135,6 +138,10 @@ const upload = async (e) => {
   }
 }
 
+const goToDetail = (id) => {
+  router.push(`/files/${id}`)
+}
+
 onMounted(load)
 </script>
 
@@ -172,6 +179,10 @@ td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; }
 .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 .pagination button:not(:disabled):hover { background: #f8fafc; }
 .page-info { font-size: 13px; color: #64748b; margin: 0 8px; }
+.file-link { color: #6366f1; cursor: pointer; text-decoration: none; }
+.file-link:hover { text-decoration: underline; }
+.file-card { cursor: pointer; transition: background 0.2s; }
+.file-card:hover { background: #f8fafc; }
 @media (max-width: 768px) {
   .desktop-table { display: none; }
   .mobile-cards { display: block; }
