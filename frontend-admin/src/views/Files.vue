@@ -38,18 +38,19 @@
 
     <div class="card">
       <table v-if="pagedList.length" class="desktop-table">
-        <thead><tr><th>文件名</th><th>标准名</th><th>分类</th><th>状态</th><th>审核</th></tr></thead>
+        <thead><tr><th>文件名</th><th>标准名</th><th>分类</th><th>状态</th><th>审核</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="f in pagedList" :key="f.id">
             <td>{{ f.name }}</td><td>{{ f.standard_name || '-' }}</td>
             <td><span class="tag">{{ f.bucket }}</span></td>
             <td><span :class="['status', f.status]">{{ statusMap[f.status] }}</span></td>
             <td><span :class="['status', f.review_status]">{{ reviewMap[f.review_status] }}</span></td>
+            <td><button class="btn-view" @click="openDetail(f)">查看详情</button></td>
           </tr>
         </tbody>
       </table>
       <div v-if="pagedList.length" class="mobile-cards">
-        <div v-for="f in pagedList" :key="'m'+f.id" class="file-card">
+        <div v-for="f in pagedList" :key="'m'+f.id" class="file-card" @click="openDetail(f)">
           <div class="file-card-name">{{ f.name }}</div>
           <div class="file-card-std">{{ f.standard_name || '-' }}</div>
           <div class="file-card-meta">
@@ -70,6 +71,54 @@
         <button @click="goPage(totalPages)" :disabled="page === totalPages">末页</button>
       </div>
     </div>
+
+    <!-- 文档详情弹窗 -->
+    <div v-if="showDetail" class="modal-overlay" @click.self="closeDetail">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>文档详情</h2>
+          <button class="btn-close" @click="closeDetail">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- 摘要卡片 - 放在顶部 -->
+          <div class="summary-card">
+            <div class="summary-header">
+              <span class="summary-title">📄 文档摘要</span>
+              <button 
+                class="btn-regenerate" 
+                @click="regenerateSummary" 
+                :disabled="generatingSummary"
+              >
+                {{ generatingSummary ? '生成中...' : '🔄 重新生成' }}
+              </button>
+            </div>
+            <div v-if="fileSummary" class="summary-content">
+              {{ fileSummary }}
+            </div>
+            <div v-else class="summary-empty">
+              <p>暂无摘要，点击"重新生成"按钮生成</p>
+            </div>
+            <div v-if="summaryInfo" class="summary-info">
+              <span v-if="summaryInfo.from_cache">来自缓存</span>
+              <span v-else>生成耗时: {{ summaryInfo.generation_time_ms }}ms</span>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <label>文件名</label>
+            <div class="value">{{ selectedFile?.name }}</div>
+          </div>
+          <div class="detail-section">
+            <label>标准名</label>
+            <div class="value">{{ selectedFile?.standard_name || '-' }}</div>
+          </div>
+          <div class="detail-section">
+            <label>分类</label>
+            <div class="value"><span class="tag">{{ selectedFile?.bucket }}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -85,6 +134,11 @@ const uploading = ref(false)
 const uploadPercent = ref(0)
 const page = ref(1)
 const pageSize = 10
+const showDetail = ref(false)
+const selectedFile = ref(null)
+const fileSummary = ref('')
+const summaryInfo = ref(null)
+const generatingSummary = ref(false)
 
 const statusMap = { pending: '待处理', processing: '处理中', completed: '已完成', failed: '失败' }
 const reviewMap = { pending: '待审核', approved: '已通过', rejected: '已拒绝' }
@@ -135,6 +189,49 @@ const upload = async (e) => {
   }
 }
 
+const openDetail = async (file) => {
+  selectedFile.value = file
+  fileSummary.value = file.summary || ''
+  summaryInfo.value = null
+  showDetail.value = true
+  
+  if (!file.summary) {
+    await generateSummary(file.id)
+  }
+}
+
+const closeDetail = () => {
+  showDetail.value = false
+  selectedFile.value = null
+  fileSummary.value = ''
+  summaryInfo.value = null
+}
+
+const generateSummary = async (fileId, regenerate = false) => {
+  generatingSummary.value = true
+  try {
+    const { data } = await files.generateSummary(fileId, regenerate)
+    fileSummary.value = data.summary
+    summaryInfo.value = {
+      generation_time_ms: data.generation_time_ms,
+      from_cache: data.from_cache
+    }
+    // 更新列表中的摘要信息
+    const item = list.value.find(f => f.id === fileId)
+    if (item) item.summary = data.summary
+  } catch (err) {
+    toast.error('生成摘要失败')
+  } finally {
+    generatingSummary.value = false
+  }
+}
+
+const regenerateSummary = () => {
+  if (selectedFile.value) {
+    generateSummary(selectedFile.value.id, true)
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -163,7 +260,8 @@ td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; }
 .status.failed, .status.rejected { background: #fee2e2; color: #991b1b; }
 .empty { padding: 60px; text-align: center; color: #94a3b8; }
 .mobile-cards { display: none; }
-.file-card { padding: 16px; border-bottom: 1px solid #f1f5f9; }
+.file-card { padding: 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.2s; }
+.file-card:hover { background: #f8fafc; }
 .file-card-name { font-weight: 600; color: #1e293b; margin-bottom: 4px; word-break: break-all; }
 .file-card-std { font-size: 13px; color: #64748b; margin-bottom: 8px; }
 .file-card-meta { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -172,10 +270,34 @@ td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; }
 .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 .pagination button:not(:disabled):hover { background: #f8fafc; }
 .page-info { font-size: 13px; color: #64748b; margin: 0 8px; }
+.btn-view { padding: 6px 12px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.btn-view:hover { background: #4f46e5; }
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: white; border-radius: 16px; width: 90%; max-width: 600px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; }
+.modal-header h2 { margin: 0; font-size: 20px; color: #1e293b; }
+.btn-close { width: 32px; height: 32px; border: none; background: #f1f5f9; border-radius: 8px; cursor: pointer; font-size: 18px; color: #64748b; }
+.btn-close:hover { background: #e2e8f0; }
+.modal-body { padding: 24px; overflow-y: auto; }
+.detail-section { margin-bottom: 20px; }
+.detail-section label { display: block; font-size: 12px; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+.detail-section .value { font-size: 15px; color: #1e293b; }
+.summary-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 12px; padding: 20px; margin-top: 24px; }
+.summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.summary-title { font-size: 16px; font-weight: 600; color: #1e293b; }
+.btn-regenerate { padding: 8px 16px; background: #6366f1; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
+.btn-regenerate:hover:not(:disabled) { background: #4f46e5; }
+.btn-regenerate:disabled { background: #94a3b8; cursor: not-allowed; }
+.summary-content { background: white; padding: 16px; border-radius: 8px; line-height: 1.7; color: #334155; font-size: 14px; }
+.summary-empty { background: white; padding: 32px 16px; border-radius: 8px; text-align: center; color: #94a3b8; }
+.summary-empty p { margin: 0; }
+.summary-info { margin-top: 12px; font-size: 12px; color: #64748b; text-align: right; }
 @media (max-width: 768px) {
   .desktop-table { display: none; }
   .mobile-cards { display: block; }
   .page-header { flex-direction: column; gap: 12px; }
   .pagination { flex-wrap: wrap; }
+  .modal { width: 95%; max-height: 90vh; }
+  .modal-header, .modal-body { padding: 16px; }
 }
 </style>

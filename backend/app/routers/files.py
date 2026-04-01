@@ -11,7 +11,8 @@ import traceback
 
 from app.database import get_db, async_session
 from app.models import FileRecord, FileTag, TextChunk, ProcessLog
-from app.services import DocumentParser, VideoParser, EmbeddingService, TagGenerator
+from app.services import DocumentParser, VideoParser, EmbeddingService, TagGenerator, TextRankSummarizer
+from app.schemas import SummaryResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/files", tags=["files"])
@@ -19,6 +20,7 @@ doc_parser = DocumentParser()
 video_parser = VideoParser()
 embedding_service = EmbeddingService()
 tag_generator = TagGenerator()
+summarizer = TextRankSummarizer()
 
 def run_in_thread(file_id: int, file_path: str, file_type: str):
     """在独立线程中运行文件处理"""
@@ -268,3 +270,44 @@ async def process_pending_files(db: AsyncSession = Depends(get_db)):
             errors.append({"file_id": file.id, "error": str(e)})
     
     return {"success": True, "processed": processed, "errors": errors}
+
+@router.post("/documents/{id}/summary", summary="生成文档摘要", description="使用 TextRank 算法为指定文档生成摘要", response_model=SummaryResponse)
+async def generate_summary(
+    id: int,
+    regenerate: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
+    file = await db.get(FileRecord, id)
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    if not regenerate and file.summary:
+        return SummaryResponse(
+            success=True,
+            summary=file.summary,
+            generation_time_ms=0,
+            from_cache=True
+        )
+    
+    chunks_result = await db.execute(
+        select(TextChunk).where(TextChunk.file_id == id).order_by(TextChunk.chunk_index)
+    )
+    chunks = chunks_result.scalars().all()
+    
+    if not chunks:
+        raise HTTPException(status_code=400, detail="No text chunks found for this file")
+    
+    full_text = " ".join([chunk.content for chunk in chunks])
+    summary, generation_time_ms = summarizer.summarize(full_text, num_sentences=3)
+    
+    await db.execute(
+        update(FileRecord).where(FileRecord.id == id).values(summary=summary)
+    )
+    await db.commit()
+    
+    return SummaryResponse(
+        success=True,
+        summary=summary,
+        generation_time_ms=generation_time_ms,
+        from_cache=False
+    )
