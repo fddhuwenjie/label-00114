@@ -37,7 +37,7 @@ logging.getLogger().addHandler(file_handler)
 logger = logging.getLogger(__name__)
 
 from app.database import init_db
-from app.routers import files_router, auth_router, search_router, stats_router
+from app.routers import files_router, documents_router, auth_router, search_router, stats_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -80,6 +80,7 @@ app.add_middleware(
 )
 
 app.include_router(files_router)
+app.include_router(documents_router)
 app.include_router(auth_router)
 app.include_router(search_router)
 app.include_router(stats_router)
